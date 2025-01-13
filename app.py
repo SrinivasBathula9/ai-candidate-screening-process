@@ -66,7 +66,7 @@ def create_resume_analyzer() -> Agent:
 
     return Agent(
         model=OpenAIChat(
-            id="gpt-4-1106",
+            id="gpt-4o",
             api_key=st.session_state.openai_api_key
         ),
         description="You are an expert technical recruiter who analyzes resumes.",
@@ -223,7 +223,9 @@ def main() -> None:
                         st.success("Congratulations! Your skills match our requirements.")
                         st.session_state.analysis_complete = True
                         st.session_state.is_selected = True
-                        st.rerun()
+                        #st.write("Congratulations! Your skills match our requirements.")
+                        st.write(f"Feedback: {feedback}") 
+                        #st.rerun()
                     else:
                         st.warning("Unfortunately, your skills don't match our requirements.")
                         st.write(f"Feedback: {feedback}")          
