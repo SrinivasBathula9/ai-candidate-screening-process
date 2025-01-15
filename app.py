@@ -13,7 +13,13 @@ from phi.tools.email import EmailTools
 from phi.tools.zoom import ZoomTool
 from phi.utils.log import logger
 from streamlit_pdf_viewer import pdf_viewer
+from dotenv import load_dotenv
 
+load_dotenv()
+
+openai_api_key=os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+#logo_path = "sclogo.jpeg"
+UPLOAD_FOLDER = "resumes"
 # Role requirements as a constant dictionary
 ROLE_REQUIREMENTS: Dict[str, str] = {
     "ai_ml_engineer": """
@@ -50,7 +56,7 @@ ROLE_REQUIREMENTS: Dict[str, str] = {
 def init_session_state() -> None:
     """Initialize only necessary session state variables."""
     defaults = {
-        'openai_api_key': "", 'resume_text': "", 'analysis_complete': False,
+        'resume_text': "", 'analysis_complete': False,
         'is_selected': False, 'current_pdf': None
     }
     for key, value in defaults.items():
@@ -59,15 +65,11 @@ def init_session_state() -> None:
 
 
 def create_resume_analyzer() -> Agent:
-    """Creates and returns a resume analysis agent."""
-    if not st.session_state.openai_api_key:
-        st.error("Please enter your OpenAI API key first.")
-        return None
-
+    """Creates and returns a resume analysis agent."""    
     return Agent(
         model=OpenAIChat(
             id="gpt-4o",
-            api_key=st.session_state.openai_api_key
+            api_key=openai_api_key
         ),
         description="You are an expert technical recruiter who analyzes resumes.",
         instructions=[
@@ -112,7 +114,7 @@ def analyze_resume(
                 "experience_level": "junior/mid/senior"
             }}
             Evaluation criteria:
-            1. Match at least 70% of required skills
+            1. Match at least 50% of required skills
             2. Consider both theoretical knowledge and practical experience
             3. Value project experience and real-world applications
             4. Consider transferable skills from similar technologies
@@ -134,32 +136,12 @@ def analyze_resume(
     except (json.JSONDecodeError, ValueError) as e:
         st.error(f"Error processing response: {str(e)}")
         return False, f"Error analyzing resume: {str(e)}"
-
 def main() -> None:
-    st.title("AI Recruitment System")
-
+    st.title("Scient Labs Candidate Screening")
+    
     init_session_state()
-    with st.sidebar:
-        st.header("Configuration")
-        
-        # OpenAI Configuration
-        st.subheader("OpenAI Settings")
-        api_key = st.text_input("OpenAI API Key", type="password", value=st.session_state.openai_api_key, help="Get your API key from platform.openai.com")
-        if api_key: st.session_state.openai_api_key = api_key        
-
-        required_configs = {'OpenAI API Key': st.session_state.openai_api_key}
-
-    missing_configs = [k for k, v in required_configs.items() if not v]
-    if missing_configs:
-        st.warning(f"Please configure the following in the sidebar: {', '.join(missing_configs)}")
-        return
-
-    if not st.session_state.openai_api_key:
-        st.warning("Please enter your OpenAI API key in the sidebar to continue.")
-        return
-
-    role = st.selectbox("Select the role you're applying for:", ["ai_ml_engineer", "frontend_engineer", "backend_engineer"])
-    with st.expander("View Required Skills", expanded=True): st.markdown(ROLE_REQUIREMENTS[role])
+    role = st.selectbox("Please select the job profile:", ["ai_ml_engineer", "frontend_engineer", "backend_engineer"])
+    with st.expander("View required job profile skills:", expanded=True): st.markdown(ROLE_REQUIREMENTS[role])
 
     # Add a "New Application" button before the resume upload
     if st.button("📝 New Application"):
@@ -171,6 +153,18 @@ def main() -> None:
         st.rerun()
 
     resume_file = st.file_uploader("Upload your resume (PDF)", type=["pdf"], key="resume_uploader")
+    if resume_file is not None:
+         import os
+         import pathlib
+         file_to_save_path = os.path.join(UPLOAD_FOLDER, resume_file.name)         
+         with open(file_to_save_path, "wb") as f:
+             #f.write(file_to_save_path)
+             pathlib.Path(file_to_save_path)
+             #st.success(f"File saved at: {file_to_save_path}")     
+        
+    
+        
+   
     if resume_file is not None and resume_file != st.session_state.get('current_pdf'):
         st.session_state.current_pdf = resume_file
         st.session_state.resume_text = ""
@@ -188,6 +182,7 @@ def main() -> None:
                 tmp_file.write(resume_file.read())
                 tmp_file_path = tmp_file.name
             resume_file.seek(0)
+
             try: pdf_viewer(tmp_file_path)
             finally: os.unlink(tmp_file_path)
         
